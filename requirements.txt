@@ -1,2 +1,5 @@
 pandas
 sklearn
+xgboost
+matplotlib
+seaborn
