@@ -3,3 +3,5 @@ sklearn
 xgboost
 matplotlib
 seaborn
+jupyterlab
+catboost

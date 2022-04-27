@@ -12,22 +12,22 @@ from sklearn import svm
 import xgboost as xgb
 # ANOVA feature selection for numeric input and categorical output
 from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.preprocessing import  OneHotEncoder, StandardScaler, LabelEncoder
+from sklearn.naive_bayes import GaussianNB
+from catboost import CatBoostClassifier
 
-rnaseq = pd.read_csv('data/only_1_BM_all_genes.csv')
-rnaseq = rnaseq.drop('num_zeros',axis=1)
+rnaseq = pd.read_csv('data/BM_last_visit_all_genes.csv')
+#rnaseq = rnaseq.drop('num_zeros',axis=1)
 
-new = []
+new_cols = []
 for col in rnaseq.columns:
-    new_c = col.replace('_1_BM', '')
-    #new_c = new_c.replace('_2_BM', '')
-    new.append(new_c)
-rnaseq.columns = new
+    pat = '_'.join(col.split('_', 2)[0:2])
+    new_cols.append(pat)
+rnaseq.columns = new_cols
 
 rnaseq = rnaseq.T
 
-
-
-add_features = pd.read_csv('data/CLEAN_sc3_Training_ClinAnnotations.csv')
+add_features = pd.read_csv('data/CLEAN_sc3_Training_ClinAnnotations.csv', sep = ';')
 add_features = add_features.drop(add_features[add_features['HR_FLAG'] == 'CENSORED'].index)
 add_features = add_features.set_index('Patient')
 print('add features shape: ', add_features.shape)
@@ -55,8 +55,10 @@ print(rnaseq.head())
 # feat_list = add_features.index.to_list()
 # rna_list = rnaseq.index.to_list()
 Y = Y[Y.index.isin(rnaseq.index)]
+Y = Y.values.ravel()
 print(len(rnaseq))
 X = pd.concat([rnaseq, add_features], axis=1, join="inner")
+X = X.values
 
 print('rnaseq shape:', rnaseq.shape)
 print('add features shape: ', add_features.shape)
@@ -67,7 +69,7 @@ print('Y shape: ', Y.shape)
 print('FEATURE SELECTION')
 
 # Select k best features from the RNA-seq data
-fs = SelectKBest(score_func=f_classif, k=100)
+fs = SelectKBest(score_func=f_classif, k=75)
 # apply feature selection
 rnaseq_selected = fs.fit_transform(rnaseq, Y)
 rnaseq_selected = pd.DataFrame(rnaseq_selected)
@@ -78,7 +80,7 @@ print(pd.DataFrame(rnaseq_selected).head())
 print(rnaseq_selected.shape)
 
 # Select best features in the clinical annotation dataset. If want to have them all, then set k = 'all'
-fs = SelectKBest(score_func=f_classif, k='all')
+fs = SelectKBest(score_func=f_classif, k=10)
 print('add features shape: ', add_features.shape)
 print(add_features.head())
 add_features_selected = fs.fit_transform(add_features, Y)
@@ -92,11 +94,12 @@ print(pd.DataFrame(add_features_selected).head())
 print(add_features_selected.shape)
 
 X_selected = pd.concat([rnaseq_selected, add_features_selected], axis=1, join='inner')
+X_selected = X_selected.values
 
 
 print('------------')
 
-X_train, X_test, Y_train, Y_test = train_test_split(X_selected, Y, test_size = 0.2, stratify = Y, random_state=42)
+X_train, X_test, Y_train, Y_test = train_test_split(X_selected, Y, test_size = 0.25, stratify = Y, random_state=42)
 print(X_train.shape)
 print(X_test.shape)
 print(Y_train.shape)
@@ -135,6 +138,12 @@ if apply_PCA == True:
     #pca_X = pca.transform(X_test)
 
 def train_model(model, X_train, X_test):
+    print(str(model))
+    if 'Logistic' in str(model) or 'SVC' in str(model):
+        sc_x = StandardScaler()
+        X_train = sc_x.fit_transform(X_train)
+        X_test = sc_x.transform(X_test)
+        print('Standardized!')
     model.fit(X_train, Y_train)
     Y_test_pred = model.predict(X_test)
     print(f'For the model {model}: ')
@@ -146,16 +155,17 @@ def train_model(model, X_train, X_test):
     print('-----------------------')
     print('-----------------------')
 
-models = [LogisticRegression(), xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(), svm.SVC()]
+models = [LogisticRegression(), xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(),
+          svm.SVC(), GaussianNB(), CatBoostClassifier()]
 
 for model in models:
     train_model(model, X_train, X_test)
 
-
-
-
-
-
-
-
-
+#
+#
+#
+#
+#
+#
+#
+#
