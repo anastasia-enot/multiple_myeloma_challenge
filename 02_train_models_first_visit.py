@@ -15,6 +15,7 @@ from sklearn.feature_selection import SelectKBest, f_classif, chi2
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
 from sklearn.naive_bayes import GaussianNB
 from catboost import CatBoostClassifier
+import itertools
 
 
 def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, num_feat_clinical):
@@ -27,7 +28,7 @@ def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, 
     :return: 
     '''
     
-    rnaseq = pd.read_csv('data/BM_first_visit_all_genes.csv')
+    rnaseq = pd.read_csv(path_expression)
     #rnaseq = rnaseq.drop('num_zeros',axis=1)
     
     new = []
@@ -37,7 +38,7 @@ def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, 
     rnaseq.columns = new
     rnaseq = rnaseq.T
     
-    clinical_df = pd.read_csv('data/CLEAN_sc3_Training_ClinAnnotations.csv', sep = ';')
+    clinical_df = pd.read_csv(path_clinical, sep = ';')
     # We do not take into account CENSORED patients
     clinical_df = clinical_df.drop(clinical_df[clinical_df['HR_FLAG'] == 'CENSORED'].index)
     clinical_df = clinical_df.set_index('Patient')
@@ -50,7 +51,6 @@ def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, 
     
     clinical_df = clinical_df.drop('HR_FLAG', axis=1)
     clinical_df['D_Gender'] = clinical_df['D_Gender'].apply(lambda x: 1 if x == 'Female' else 0)
-    print('head of clinical data: ', clinical_df.head())
     print(len(clinical_df))
     print(len(rnaseq))
     X_copy = rnaseq.copy()
@@ -79,16 +79,14 @@ def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, 
     print('FEATURE SELECTION')
     
     # Select k best features from the RNA-seq data
-    fs = SelectKBest(score_func=f_classif, k=75)
+    fs = SelectKBest(score_func=f_classif, k=num_feat_expression)
     # apply feature selection
     rnaseq_selected = fs.fit_transform(rnaseq, Y)
     filtered = fs.get_support()
     features = np.array(rnaseq.columns)
+
     
-    print("All features:")
-    print(features)
-    
-    print("Selected best 3:")
+    print(f"Selected best {num_feat_expression} for expression data:")
     print(features[filtered])
     
     rnaseq_selected = pd.DataFrame(rnaseq_selected)
@@ -99,7 +97,7 @@ def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, 
     print(rnaseq_selected.shape)
     
     # Select best features in the clinical annotation dataset. If want to have them all, then set k = 'all'
-    fs = SelectKBest(score_func=f_classif, k=5)
+    fs = SelectKBest(score_func=f_classif, k=num_feat_clinical)
     print('add features shape: ', clinical_df.shape)
     print(clinical_df.head())
     clinical_df_selected = fs.fit_transform(clinical_df, Y)
@@ -107,16 +105,11 @@ def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, 
     filtered = fs.get_support()
     features = np.array(clinical_df.columns)
     
-    print("All features:")
-    print(features)
-    
-    print("Selected best 3:")
+    print(f"Selected best {num_feat_clinical} for clinical data:")
     print(features[filtered])
     
     
     clinical_df_selected = pd.DataFrame(clinical_df_selected)
-    
-    
     
     clinical_df_selected = clinical_df_selected.set_index(clinical_df.index)
     cols_2 = ['selected_best_clinical_' + str(col) for col in clinical_df_selected.columns.to_list()]
@@ -169,7 +162,9 @@ def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, 
         print(X_train.shape)
         #pca_X = pca.transform(X_test)
 
-def train_model(model, X_train, X_test):
+    return X_train, X_test, Y_train, Y_test
+
+def train_model(model, X_train, X_test, Y_train, Y_test):
     print(str(model))
     if 'Logistic' in str(model) or 'SVC' in str(model):
         sc_x = StandardScaler()
@@ -188,11 +183,38 @@ def train_model(model, X_train, X_test):
     print('-----------------------')
     print('-----------------------')
 
-models = [LogisticRegression(), xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(),
-            svm.SVC(), GaussianNB()] #, CatBoostClassifier()]
+    return recall_score(Y_test, Y_test_pred), accuracy_score(Y_test, Y_test_pred)
 
-# for model in models:
-#     train_model(model, X_train, X_test)
+models = [LogisticRegression()] #, xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(),
+            #svm.SVC(), GaussianNB()] #, CatBoostClassifier()]
+
+list_expression = list(range(50, 350, 15))
+print(list_expression[:10])
+list_clinical = list(range(1, 15, 2))
+num_features = []
+for ex in list_expression:
+    for cl in list_clinical:
+        num_features.append((ex, cl))
+
+print(num_features[:10])
+path_expression = 'data/BM_first_visit_all_genes.csv'
+path_clinical = 'data/CLEAN_sc3_Training_ClinAnnotations.csv'
+df = pd.DataFrame()
+i = 0
+from tqdm import tqdm
+for model in models:
+    for tup in tqdm(num_features):
+        X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression, path_clinical,
+                                                              num_feat_expression=tup[0], num_feat_clinical=tup[1])
+        print(tup)
+        rec, acc = train_model(model, X_train, X_test, Y_train, Y_test)
+        df.loc[i, 'tup'] = str(tup)
+        df.loc[i, 'accuracy'] = acc
+        df.loc[i, 'recall'] = rec
+        i = i + 1
+
+        print('---------------------')
+    df.to_csv('data/logreg_Kbest_selection.csv')
 
 
 # from sklearn.model_selection import GridSearchCV
