@@ -172,65 +172,80 @@ def train_model(model, X_train, X_test, Y_train, Y_test):
 
     return recall_score(Y_test, Y_test_pred), accuracy_score(Y_test, Y_test_pred)
 
-models = [LogisticRegression(), xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(),
-            svm.SVC(), GaussianNB()] #, CatBoostClassifier()]
+models = [LogisticRegression()] #, xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(),
+            #svm.SVC(), GaussianNB()] #, CatBoostClassifier()]
 
-list_expression = list(range(50, 350, 15))
-print(list_expression[:10])
-list_clinical = list(range(1, 15, 2))
-num_features = []
-for ex in list_expression:
-    for cl in list_clinical:
-        num_features.append((ex, cl))
 
-print(num_features[:10])
 path_expression = 'data/BM_first_visit_all_genes.csv'
 path_clinical = 'data/clean_clinical_annotations.csv'
-df = pd.DataFrame()
-i = 0
+
+###########################################################################
+# Determine the best number of features in both datasets
+# list_expression = list(range(20, 300, 20))
+# print(list_expression[:10])
+# list_clinical = list(range(1, 16, 2))
+# num_features = []
+# for ex in list_expression:
+#     for cl in list_clinical:
+#         num_features.append((ex, cl))
+#
+# print(num_features[:10])
+#
+# df = pd.DataFrame()
+# i = 0
+# for tup in tqdm(num_features):
+#
+#     X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression,
+#                                                               path_clinical=path_clinical,
+#                                                               select_best=True,
+#                                                               num_feat_expression=tup[0], num_feat_clinical=tup[1])
+#     print(tup)
+#     for model in models:
+#         rec, acc = train_model(model, X_train, X_test, Y_train, Y_test)
+#         df.loc[i, 'tup'] = str(tup)
+#         df.loc[i, 'accuracy'] = acc
+#         df.loc[i, 'recall'] = rec
+#         i = i + 1
+#
+#         print('---------------------')
+#     df.to_csv('data/logreg_Kbest_selection_first_visit_all_genes_20_300.csv')
+#
+# print(df.max())
+#################################################################################
+
+from sklearn.model_selection import GridSearchCV
+
+X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression,
+                                                              path_clinical=path_clinical,
+                                                              select_best=True,
+                                                              num_feat_expression=80, num_feat_clinical=9)
 
 
-    #for tup in tqdm(num_features):
-X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression, path_clinical=path_clinical,
-                                                          select_best=True,
-                                                          num_feat_expression=75, num_feat_clinical=15)
-        # print(tup)
-for model in models:
-    rec, acc = train_model(model, X_train, X_test, Y_train, Y_test)
-        # df.loc[i, 'tup'] = str(tup)
-        # df.loc[i, 'accuracy'] = acc
-        # df.loc[i, 'recall'] = rec
-        # i = i + 1
-        #
-        # print('---------------------')
-    #df.to_csv('data/logreg_Kbest_selection.csv')
 
+param_grid_lr = {
+    'max_iter': [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 30],
+    'solver': ['newton-cg', 'lbfgs', 'liblinear', 'saga'],
+    'C' : np.logspace(-4, 4, 20),
+    'penalty': ['l1', 'l2']
+}
 
-# from sklearn.model_selection import GridSearchCV
-#
-# param_grid_lr = {
-#     'max_iter': [20, 100, 200, 500],
-#     'solver': ['newton-cg', 'lbfgs', 'liblinear', 'saga'],
-#     'C' : np.logspace(-4, 4, 20),
-#     'penalty': ['l1', 'l2']
-# }
-#
-# logModel_grid = GridSearchCV(estimator=LogisticRegression(random_state=1234), param_grid=param_grid_lr,
-#                              verbose=1, cv=10, n_jobs=-1, scoring="recall")
-# sc_x = StandardScaler()
-# X_train = sc_x.fit_transform(X_train)
-# X_test = sc_x.transform(X_test)
-#
-# logModel_grid.fit(X_train, Y_train)
-# Y_test_pred = logModel_grid.predict(X_test)
-# print("Accuracy on test set: {:.3}".format(accuracy_score(Y_test, Y_test_pred)))
-# print("Recall-score on test set: {:.3}".format(recall_score(Y_test, Y_test_pred)))
-# print("Precision-score on test set: {:.3}".format(precision_score(Y_test, Y_test_pred)))
-# print("F1-score on test set: {:.3}".format(f1_score(Y_test, Y_test_pred)))
-# print(f'AUC score on test set: {roc_auc_score(Y_test, Y_test_pred)}')
-#
-# print(logModel_grid.best_estimator_)
-#
+logModel_grid = GridSearchCV(estimator=LogisticRegression(random_state=1234), param_grid=param_grid_lr,
+                             verbose=1, cv=10, n_jobs=-1, scoring="f1")
+sc_x = StandardScaler()
+X_train = sc_x.fit_transform(X_train)
+X_test = sc_x.transform(X_test)
+
+logModel_grid.fit(X_train, Y_train)
+Y_test_pred = logModel_grid.predict(X_test)
+print("Accuracy on test set: {:.3}".format(accuracy_score(Y_test, Y_test_pred)))
+print("Recall-score on test set: {:.3}".format(recall_score(Y_test, Y_test_pred)))
+print("Precision-score on test set: {:.3}".format(precision_score(Y_test, Y_test_pred)))
+print("F1-score on test set: {:.3}".format(f1_score(Y_test, Y_test_pred)))
+print(f'AUC score on test set: {roc_auc_score(Y_test, Y_test_pred)}')
+
+print(logModel_grid.best_estimator_)
+print("The best parameters:", logModel_grid.best_params_)
+
 
 
 
