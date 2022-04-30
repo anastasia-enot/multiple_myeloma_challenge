@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -18,7 +18,8 @@ from catboost import CatBoostClassifier
 import itertools
 
 
-def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, num_feat_clinical):
+def prepare_data_for_train(path_expression, path_clinical, select_best = False,
+                           num_feat_expression=None, num_feat_clinical=None):
     '''
     This function will prepare the data for the training step. The data should already be 'clean': it should contain 
     only Bone Marrow (BM) patients from their 1st visit. (samples ending with 1_BM).
@@ -55,7 +56,6 @@ def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, 
     
     ###############################################################
 
-    select_best = False
     if select_best == True:
         print('FEATURE SELECTION')
 
@@ -152,28 +152,28 @@ def prepare_data_for_train(path_expression, path_clinical, num_feat_expression, 
 
 
 def train_model(model, X_train, X_test, Y_train, Y_test):
-    print(str(model))
     if 'Logistic' in str(model) or 'SVC' in str(model):
         sc_x = StandardScaler()
         X_train = sc_x.fit_transform(X_train)
         X_test = sc_x.transform(X_test)
-        print('Standardized!')
-
+        print('Standardized data!')
+    print(f'Training the model {str(model)}...')
     model.fit(X_train, Y_train)
+    print('Done training!')
     Y_test_pred = model.predict(X_test)
-    print(f'For the model {model}: ')
+    print(f'Metrics for the model {str(model)}: ')
     print("Accuracy on test set: {:.3}".format(accuracy_score(Y_test, Y_test_pred)))
     print("Recall-score on test set: {:.3}".format(recall_score(Y_test, Y_test_pred)))
     print("Precision-score on test set: {:.3}".format(precision_score(Y_test, Y_test_pred)))
     print("F1-score on test set: {:.3}".format(f1_score(Y_test, Y_test_pred)))
     print(f'AUC score on test set: {roc_auc_score(Y_test, Y_test_pred)}')
     print('-----------------------')
-    print('-----------------------')
+
 
     return recall_score(Y_test, Y_test_pred), accuracy_score(Y_test, Y_test_pred)
 
-models = [LogisticRegression()] #, xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(),
-            #svm.SVC(), GaussianNB()] #, CatBoostClassifier()]
+models = [LogisticRegression(), xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(),
+            svm.SVC(), GaussianNB()] #, CatBoostClassifier()]
 
 list_expression = list(range(50, 350, 15))
 print(list_expression[:10])
@@ -188,13 +188,15 @@ path_expression = 'data/BM_first_visit_all_genes.csv'
 path_clinical = 'data/clean_clinical_annotations.csv'
 df = pd.DataFrame()
 i = 0
-from tqdm import tqdm
-for model in models:
-    for tup in tqdm(num_features):
-        X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression, path_clinical,
-                                                              num_feat_expression=tup[0], num_feat_clinical=tup[1])
+
+
+    #for tup in tqdm(num_features):
+X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression, path_clinical=path_clinical,
+                                                          select_best=True,
+                                                          num_feat_expression=75, num_feat_clinical=15)
         # print(tup)
-        # rec, acc = train_model(model, X_train, X_test, Y_train, Y_test)
+for model in models:
+    rec, acc = train_model(model, X_train, X_test, Y_train, Y_test)
         # df.loc[i, 'tup'] = str(tup)
         # df.loc[i, 'accuracy'] = acc
         # df.loc[i, 'recall'] = rec
