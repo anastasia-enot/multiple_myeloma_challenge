@@ -19,6 +19,10 @@ precision, f1 score and AUC score) and a confusion matrix.
 
 **Output**: metrics scores and a confusion matrix
 
+## Other files
+You can find the code that served to explore and preprocess the data in the notebook `notebook_preprocessing_datasets.ipynb`
+The code that was used to select features and train the model can be found in the script `train_models.py`
+
 
 
 
