@@ -33,14 +33,12 @@ def prepare_data_for_train(path_expression, path_clinical, select_best = False,
     rnaseq = pd.read_csv(path_expression, index_col='patient')
     clinical_df = pd.read_csv(path_clinical, index_col='Patient')
 
-    #clinical_df = clinical_df.set_index('Patient')
     print('Clinical data shape: ', clinical_df.shape)
     Y = clinical_df[['HR_FLAG']]
     
     clinical_df = clinical_df.drop('HR_FLAG', axis=1)
     print(f'Length of the clinical dataset: {len(clinical_df)}.')
     print(f'Length of the expression dataset: {len(rnaseq)}.')
-    #X_copy = rnaseq.copy()
 
     # Take expression data only if it is in the patient clinical data and vice versa
     rnaseq = rnaseq[rnaseq.index.isin(clinical_df.index)]
@@ -53,7 +51,6 @@ def prepare_data_for_train(path_expression, path_clinical, select_best = False,
     # Finalize X and Y variables for downstream analysis
     Y = Y[Y.index.isin(rnaseq.index)]
     Y = Y.values.ravel()
-
     
     ###############################################################
 
@@ -72,7 +69,6 @@ def prepare_data_for_train(path_expression, path_clinical, select_best = False,
 
         rnaseq_selected = pd.DataFrame(rnaseq_selected)
         rnaseq_selected = rnaseq_selected.set_index(rnaseq.index)
-        # cols_1 = ['selected_best_rnaseq_' + str(col) for col in rnaseq_selected.columns.to_list()]
         rnaseq_selected.columns = features[filtered]
         print(pd.DataFrame(rnaseq_selected).head())
         print(rnaseq_selected.shape)
@@ -92,7 +88,6 @@ def prepare_data_for_train(path_expression, path_clinical, select_best = False,
         clinical_df_selected = pd.DataFrame(clinical_df_selected)
 
         clinical_df_selected = clinical_df_selected.set_index(clinical_df.index)
-        # cols_2 = ['selected_best_clinical_' + str(col) for col in clinical_df_selected.columns.to_list()]
         clinical_df_selected.columns = features[filtered]
         print(fs.scores_)
         print(pd.DataFrame(clinical_df_selected).head())
@@ -196,113 +191,113 @@ def train_model(model, X_train, X_test, Y_train, Y_test):
     return model, recall_score(Y_test, Y_test_pred), accuracy_score(Y_test, Y_test_pred)
 
 
+if __name__ == "__main__":
+    path_expression = 'data/BM_first_visit_all_genes.csv'
+    path_clinical = 'data/clean_clinical_annotations.csv'
 
-path_expression = 'data/BM_first_visit_all_genes.csv'
-path_clinical = 'data/clean_clinical_annotations.csv'
+    # Save the best Logistic Regression model
+    X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression,
+                                                                      path_clinical=path_clinical,
+                                                                      select_best=True,
+                                                                      num_feat_expression=80, num_feat_clinical=9)
 
-# Save the best Logistic Regression model
-X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression,
-                                                                  path_clinical=path_clinical,
-                                                                  select_best=True,
-                                                                  num_feat_expression=80, num_feat_clinical=9)
+    model = LogisticRegression(C=0.0006951927961775605, max_iter=15, random_state=1234,
+                       solver='liblinear')
 
-model = LogisticRegression(C=0.0006951927961775605, max_iter=15, random_state=1234,
-                   solver='liblinear')
-
-trained_model, _, _ = train_model(model, X_train, X_test, Y_train, Y_test)
-filename = 'trained_models/LogReg_model_BM_80_9_first_visit.sav'
-pickle.dump(trained_model, open(filename, 'wb'))
-
-
-# #######################################################################
-# # Cross validation for the best model
-#
-# from sklearn.model_selection import KFold
-# from sklearn.model_selection import cross_val_score
-#
-# cv = KFold(n_splits=10, random_state=1, shuffle=True)
-# X = np.concatenate((X_train, X_test))
-# print(X.shape)
-# Y= np.concatenate((Y_train, Y_test))
-# scores = cross_val_score(trained_model, X, Y, scoring='accuracy', cv=cv, n_jobs=-1)
-# print('Accuracy: %.3f (%.3f)' % (np.mean(scores), np.std(scores)))
+    trained_model, _, _ = train_model(model, X_train, X_test, Y_train, Y_test)
+    filename = 'trained_models/LogReg_model_BM_80_9_first_visit.sav'
+    pickle.dump(trained_model, open(filename, 'wb'))
 
 
-###########################################################################
-# # Different models to try
-# models = [LogisticRegression(), xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(),
-#             svm.SVC(), GaussianNB()] #, CatBoostClassifier()]
+    # #######################################################################
+    # # Cross validation for the best model
+    #
+    # from sklearn.model_selection import KFold
+    # from sklearn.model_selection import cross_val_score
+    #
+    # cv = KFold(n_splits=10, random_state=1, shuffle=True)
+    # X = np.concatenate((X_train, X_test))
+    # print(X.shape)
+    # Y= np.concatenate((Y_train, Y_test))
+    # scores = cross_val_score(trained_model, X, Y, scoring='accuracy', cv=cv, n_jobs=-1)
+    # print('Accuracy: %.3f (%.3f)' % (np.mean(scores), np.std(scores)))
+
+
+    ###########################################################################
+    # # Different models to try
+    # models = [LogisticRegression(), xgb.XGBClassifier(use_label_encoder=False, n_jobs=7), RandomForestClassifier(),
+    #             svm.SVC(), GaussianNB()] #, CatBoostClassifier()]
 
 
 
-###########################################################################
-# Determine the best number of features in both datasets
-# list_expression = list(range(20, 300, 20))
-# print(list_expression[:10])
-# list_clinical = list(range(1, 16, 2))
-# num_features = []
-# for ex in list_expression:
-#     for cl in list_clinical:
-#         num_features.append((ex, cl))
-#
-# print(num_features[:10])
-#
-# df = pd.DataFrame()
-# i = 0
-# for tup in tqdm(num_features):
-#
-#     X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression,
-#                                                               path_clinical=path_clinical,
-#                                                               select_best=True,
-#                                                               num_feat_expression=tup[0], num_feat_clinical=tup[1])
-#     print(tup)
-#     for model in models:
-#         _, rec, acc = train_model(model, X_train, X_test, Y_train, Y_test)
-#         df.loc[i, 'tup'] = str(tup)
-#         df.loc[i, 'accuracy'] = acc
-#         df.loc[i, 'recall'] = rec
-#         i = i + 1
-#
-#         print('---------------------')
-#     df.to_csv('data/logreg_Kbest_selection_first_visit_all_genes_20_300.csv')
-#
-# print(df.max())
-#################################################################################
+    ###########################################################################
+    # Determine the best number of features in both datasets
+    # list_expression = list(range(20, 300, 20))
+    # print(list_expression[:10])
+    # list_clinical = list(range(1, 16, 2))
+    # num_features = []
+    # for ex in list_expression:
+    #     for cl in list_clinical:
+    #         num_features.append((ex, cl))
+    #
+    # print(num_features[:10])
+    #
+    # df = pd.DataFrame()
+    # i = 0
+    # for tup in tqdm(num_features):
+    #
+    #     X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression,
+    #                                                               path_clinical=path_clinical,
+    #                                                               select_best=True,
+    #                                                               num_feat_expression=tup[0], num_feat_clinical=tup[1])
+    #     print(tup)
+    #     for model in models:
+    #         _, rec, acc = train_model(model, X_train, X_test, Y_train, Y_test)
+    #         df.loc[i, 'tup'] = str(tup)
+    #         df.loc[i, 'accuracy'] = acc
+    #         df.loc[i, 'recall'] = rec
+    #         i = i + 1
+    #
+    #         print('---------------------')
+    #     df.to_csv('data/logreg_Kbest_selection_first_visit_all_genes_20_300.csv')
+    #
+    # print(df.max())
+    #################################################################################
 
 
-# # Grid Search for Logistic regression
-# from sklearn.model_selection import GridSearchCV
-#
-# X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression,
-#                                                               path_clinical=path_clinical,
-#                                                               select_best=True,
-#                                                               num_feat_expression=80, num_feat_clinical=9)
-#
-#
-#
-# param_grid_lr = {
-#     'max_iter': [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 30],
-#     'solver': ['newton-cg', 'lbfgs', 'liblinear', 'saga'],
-#     'C' : np.logspace(-4, 4, 20),
-#     'penalty': ['l1', 'l2']
-# }
-#
-# logModel_grid = GridSearchCV(estimator=LogisticRegression(random_state=1234), param_grid=param_grid_lr,
-#                              verbose=1, cv=10, n_jobs=-1, scoring="f1")
-# sc_x = StandardScaler()
-# X_train = sc_x.fit_transform(X_train)
-# X_test = sc_x.transform(X_test)
-#
-# logModel_grid.fit(X_train, Y_train)
-# Y_test_pred = logModel_grid.predict(X_test)
-# print("Accuracy on test set: {:.3}".format(accuracy_score(Y_test, Y_test_pred)))
-# print("Recall-score on test set: {:.3}".format(recall_score(Y_test, Y_test_pred)))
-# print("Precision-score on test set: {:.3}".format(precision_score(Y_test, Y_test_pred)))
-# print("F1-score on test set: {:.3}".format(f1_score(Y_test, Y_test_pred)))
-# print(f'AUC score on test set: {roc_auc_score(Y_test, Y_test_pred)}')
-#
-# print(logModel_grid.best_estimator_)
-# print("The best parameters:", logModel_grid.best_params_)
+    # # Grid Search for Logistic regression
+    # from sklearn.model_selection import GridSearchCV
+    #
+    # X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression,
+    #                                                               path_clinical=path_clinical,
+    #                                                               select_best=True,
+    #                                                               num_feat_expression=80, num_feat_clinical=9)
+    #
+    #
+    #
+    # param_grid_lr = {
+    #     'max_iter': [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 30],
+    #     'solver': ['newton-cg', 'lbfgs', 'liblinear', 'saga'],
+    #     'C' : np.logspace(-4, 4, 20),
+    #     'penalty': ['l1', 'l2']
+    # }
+    #
+    # logModel_grid = GridSearchCV(estimator=LogisticRegression(random_state=1234), param_grid=param_grid_lr,
+    #                              verbose=1, cv=10, n_jobs=-1, scoring="f1")
+    # sc_x = StandardScaler()
+    # X_train = sc_x.fit_transform(X_train)
+    # X_test = sc_x.transform(X_test)
+    #
+    # logModel_grid.fit(X_train, Y_train)
+    # Y_test_pred = logModel_grid.predict(X_test)
+    # print("Accuracy on test set: {:.3}".format(accuracy_score(Y_test, Y_test_pred)))
+    # print("Recall-score on test set: {:.3}".format(recall_score(Y_test, Y_test_pred)))
+    # print("Precision-score on test set: {:.3}".format(precision_score(Y_test, Y_test_pred)))
+    # print("F1-score on test set: {:.3}".format(f1_score(Y_test, Y_test_pred)))
+    # print(f'AUC score on test set: {roc_auc_score(Y_test, Y_test_pred)}')
+    #
+    # print(logModel_grid.best_estimator_)
+    # print("The best parameters:", logModel_grid.best_params_)
 
 
 
