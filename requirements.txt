@@ -4,5 +4,6 @@ xgboost
 matplotlib
 seaborn
 jupyterlab
-catboost
 tqdm
+catboost
+
