@@ -201,7 +201,6 @@ path_expression = 'data/BM_first_visit_all_genes.csv'
 path_clinical = 'data/clean_clinical_annotations.csv'
 
 # Save the best Logistic Regression model
-# Save the name of the columns for the preprocessing step
 X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_expression,
                                                                   path_clinical=path_clinical,
                                                                   select_best=True,
@@ -209,20 +208,24 @@ X_train, X_test, Y_train, Y_test = prepare_data_for_train(path_expression=path_e
 
 model = LogisticRegression(C=0.0006951927961775605, max_iter=15, random_state=1234,
                    solver='liblinear')
+
 trained_model, _, _ = train_model(model, X_train, X_test, Y_train, Y_test)
-
-from sklearn.model_selection import KFold
-from sklearn.model_selection import cross_val_score
-
-cv = KFold(n_splits=10, random_state=1, shuffle=True)
-X = np.concatenate((X_train, X_test))
-print(X.shape)
-Y= np.concatenate((Y_train, Y_test))
-scores = cross_val_score(trained_model, X, Y, scoring='accuracy', cv=cv, n_jobs=-1)
-print('Accuracy: %.3f (%.3f)' % (np.mean(scores), np.std(scores)))
-
 filename = 'trained_models/LogReg_model_BM_80_9_first_visit.sav'
-#pickle.dump(trained_model, open(filename, 'wb'))
+pickle.dump(trained_model, open(filename, 'wb'))
+
+
+# #######################################################################
+# # Cross validation for the best model
+#
+# from sklearn.model_selection import KFold
+# from sklearn.model_selection import cross_val_score
+#
+# cv = KFold(n_splits=10, random_state=1, shuffle=True)
+# X = np.concatenate((X_train, X_test))
+# print(X.shape)
+# Y= np.concatenate((Y_train, Y_test))
+# scores = cross_val_score(trained_model, X, Y, scoring='accuracy', cv=cv, n_jobs=-1)
+# print('Accuracy: %.3f (%.3f)' % (np.mean(scores), np.std(scores)))
 
 
 ###########################################################################

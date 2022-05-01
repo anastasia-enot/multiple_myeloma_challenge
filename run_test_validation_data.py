@@ -1,5 +1,5 @@
-from preprocessing import run_combine_datasets
-from make_predictions_validation_data import get_predictions
+from multiple_myeloma_challenge.utils.preprocessing import run_combine_datasets
+from multiple_myeloma_challenge.utils.make_predictions_validation_data import get_predictions
 
 # Please modify the paths to the 2 datasets here :
 

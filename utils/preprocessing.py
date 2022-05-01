@@ -60,8 +60,8 @@ def preprocess_clinical(path):
     clean_clin_data = clean_clin_data.loc[:, clinical_cols_to_keep]
     print(f'The shape of the clinical dataset: {clean_clin_data.shape}.')
 
-    if not os.path.exists('validation_data'):
-        os.makedirs('validation_data')
+    if not os.path.exists('../validation_data'):
+        os.makedirs('../validation_data')
         print("The folder for validation data is created: validation_data")
 
     clean_clin_data.to_csv('validation_data/VALIDATION_clean_clinical_annotations.csv')
@@ -141,9 +141,9 @@ def preprocess_expression(path):
     rna_only_first = rna_only_first.loc[:, expression_cols_to_keep]
     print(f'The shape of the expression dataset: {rna_only_first.shape}.')
 
-    if not os.path.exists('validation_data'):
+    if not os.path.exists('../validation_data'):
         # Create a new directory because it does not exist
-        os.makedirs('validation_data')
+        os.makedirs('../validation_data')
         print("The folder for validation data is created: validation_data")
 
     rna_only_first.to_csv('validation_data/VALIDATION_BM_first_visit_all_genes.csv')
@@ -173,7 +173,7 @@ def run_combine_datasets(path_clinical, path_expression):
     return combined_dataset
 
 if __name__ == "__main__":
-    run_combine_datasets('data/sc3_Training_ClinAnnotations.csv',
+    run_combine_datasets('../data/sc3_Training_ClinAnnotations.csv',
                          'data/MMRF_CoMMpass_IA9_E74GTF_Salmon_entrezID_TPM_hg19.csv')
 
 
