@@ -47,9 +47,20 @@ def preprocess_clinical(path):
     clean_clin_data['D_Gender'] = clean_clin_data['D_Gender'].apply(lambda x: 1 if x == 'Female' else 0)
 
     clean_clin_data = clean_clin_data.set_index('Patient')
+    clean_clin_data.index.names = ['patient']
+
+    clinical_cols_to_keep = ['D_Age', 'D_Gender', 'CYTO_predicted_feature_01',
+                             'CYTO_predicted_feature_02', 'CYTO_predicted_feature_03',
+                             'CYTO_predicted_feature_12', 'CYTO_predicted_feature_13',
+                             'CYTO_predicted_feature_14', 'CYTO_predicted_feature_16', 'HR_FLAG']
+
+    print('The columns that are finally kept in the clinical dataset: ')
+    print(clinical_cols_to_keep)
+
+    clean_clin_data = clean_clin_data.loc[:, clinical_cols_to_keep]
+    print(f'The shape of the clinical dataset: {clean_clin_data.shape}.')
 
     if not os.path.exists('validation_data'):
-        # Create a new directory because it does not exist
         os.makedirs('validation_data')
         print("The folder for validation data is created: validation_data")
 
@@ -104,11 +115,65 @@ def preprocess_expression(path):
     rna_only_first = rna_only_first.T
     rna_only_first.index.names = ['patient']
 
+    # Keep only the selected columns from the selectKbest analysis
+
+    expression_cols_to_keep = ['gene_21', 'gene_248', 'gene_1406', 'gene_1580', 'gene_1831', 'gene_1910',
+     'gene_2063', 'gene_2334', 'gene_2767', 'gene_2949', 'gene_3078', 'gene_3306',
+     'gene_3760', 'gene_3853', 'gene_5275', 'gene_5744', 'gene_6915', 'gene_6953',
+     'gene_7852', 'gene_8411', 'gene_9148', 'gene_9578', 'gene_10655', 'gene_11136',
+     'gene_11248', 'gene_26786', 'gene_51667', 'gene_55196', 'gene_55711',
+     'gene_56107', 'gene_56155', 'gene_57408', 'gene_57716', 'gene_80320',
+     'gene_84889', 'gene_85462', 'gene_114827', 'gene_143502', 'gene_144817',
+     'gene_145447', 'gene_150297', 'gene_162540', 'gene_162966', 'gene_255104',
+     'gene_266722', 'gene_284254', 'gene_339400', 'gene_378938', 'gene_387715',
+     'gene_388646', 'gene_400410', 'gene_401492', 'gene_406994', 'gene_407046',
+     'gene_414926', 'gene_646268', 'gene_692093', 'gene_692233', 'gene_693206',
+     'gene_693220', 'gene_728673', 'gene_100033435', 'gene_100126330',
+     'gene_100132529', 'gene_100132979', 'gene_100419170', 'gene_100422875',
+     'gene_100874278', 'gene_101927953', 'gene_101928376', 'gene_101929080',
+     'gene_101929240', 'gene_102723775', 'gene_102724018', 'gene_102724097',
+     'gene_102725072', 'gene_104326189', 'gene_105377213', 'gene_106660610',
+     'gene_107985210']
+
+    print('The columns that are finally kept in the expression dataset: ')
+    print(expression_cols_to_keep)
+
+    rna_only_first = rna_only_first.loc[:, expression_cols_to_keep]
+    print(f'The shape of the expression dataset: {rna_only_first.shape}.')
+
     if not os.path.exists('validation_data'):
         # Create a new directory because it does not exist
         os.makedirs('validation_data')
         print("The folder for validation data is created: validation_data")
 
     rna_only_first.to_csv('validation_data/VALIDATION_BM_first_visit_all_genes.csv')
-    print(f'Saveed the preprocessed gene expression data to folder: validation_data/VALIDATION_BM_first_visit_all_genes.csv')
+    print(f'Saved the preprocessed gene expression data to folder: validation_data/VALIDATION_BM_first_visit_all_genes.csv')
+    print('--------------------------------------------------------')
+
+    return rna_only_first
+
+def combine_dataset(expression_dataset, clinical_dataset):
+    expression_dataset = expression_dataset[expression_dataset.index.isin(clinical_dataset.index)]
+    clinical_dataset = clinical_dataset[clinical_dataset.index.isin(expression_dataset.index)]
+    combined = pd.concat([expression_dataset, clinical_dataset], axis=1, join='inner')
+
+    combined.to_csv('validation_data/VALIDATION_combined_BM_first_visit_all_genes.csv')
+    print(
+        f'Saved the preprocessed combined data to folder: validation_data/VALIDATION_combined_BM_first_visit_all_genes.csv')
+
+    return combined
+
+
+def run_combine_datasets(path_clinical, path_expression):
+    clin = preprocess_clinical(path_clinical)
+    exp = preprocess_expression(path_expression)
+    combined_dataset = combine_dataset(exp, clin)
+    print('--------------------------------------------------------')
+
+    return combined_dataset
+
+if __name__ == "__main__":
+    run_combine_datasets('data/sc3_Training_ClinAnnotations.csv',
+                         'data/MMRF_CoMMpass_IA9_E74GTF_Salmon_entrezID_TPM_hg19.csv')
+
 
