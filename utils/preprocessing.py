@@ -60,8 +60,8 @@ def preprocess_clinical(path):
     clean_clin_data = clean_clin_data.loc[:, clinical_cols_to_keep]
     print(f'The shape of the clinical dataset: {clean_clin_data.shape}.')
 
-    if not os.path.exists('../validation_data'):
-        os.makedirs('../validation_data')
+    if not os.path.exists('validation_data'):
+        os.makedirs('validation_data')
         print("The folder for validation data is created: validation_data")
 
     clean_clin_data.to_csv('validation_data/VALIDATION_clean_clinical_annotations.csv')
