@@ -212,11 +212,12 @@ if __name__ == "__main__":
     # #######################################################################
     # # Cross validation for the best model
     #
-    # from sklearn.model_selection import KFold
-    # from sklearn.model_selection import cross_val_score
+    # from sklearn.model_selection import KFold, cross_val_score
     #
     # cv = KFold(n_splits=10, random_state=1, shuffle=True)
     # X = np.concatenate((X_train, X_test))
+    # sc_x = StandardScaler()
+    # X = sc_x.fit_transform(X)
     # print(X.shape)
     # Y= np.concatenate((Y_train, Y_test))
     # scores = cross_val_score(trained_model, X, Y, scoring='accuracy', cv=cv, n_jobs=-1)
