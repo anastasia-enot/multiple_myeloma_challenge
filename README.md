@@ -1,7 +1,7 @@
 # multiple_myeloma_challenge
 
 The goal of this project was to train a model that will predict high-risk Multiple Myeloma patients from
-the MMRF CoMMpass challenge: gene expression and clinical data. 
+the MMRF CoMMpass challenge: gene expression (RNA-seq) and clinical data. 
 
 ## How to run this project:
 Recommended version: `python 3.10`
